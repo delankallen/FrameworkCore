@@ -7,7 +7,7 @@ module Database =
 
     let slqConBuilder () =
         let builder = SqlConnectionStringBuilder()
-        //connection parameters
+        //connection parameters to be placed in config
         new SqlConnection(builder.ConnectionString)
 
     let mapRows (reader:IDataReader) =
