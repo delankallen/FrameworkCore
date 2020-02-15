@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Database.fs" />
+    <Compile Include="XpathQuery.fs" />
+    <Compile Include="Sync.fs" />
+    <Compile Include="CanopyExtentions.fs" />
+    <Compile Include="Setup.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="canopy" Version="2.1.1" />
+    <PackageReference Include="dapper" Version="2.0.30" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="1.1.0" />
+    <PackageReference Include="Selenium.Support" Version="3.141.0" />
+  </ItemGroup>
+</Project>
