@@ -1,8 +1,0 @@
-C:\Users\daadv\Framework\obj\Debug\netstandard2.0\Framework.fsprojAssemblyReference.cache
-C:\Users\daadv\Framework\obj\Debug\netstandard2.0\Framework.AssemblyInfoInputs.cache
-C:\Users\daadv\Framework\obj\Debug\netstandard2.0\Framework.AssemblyInfo.fs
-C:\Users\daadv\Framework\bin\Debug\netstandard2.0\Framework.deps.json
-C:\Users\daadv\Framework\bin\Debug\netstandard2.0\Framework.dll
-C:\Users\daadv\Framework\bin\Debug\netstandard2.0\Framework.pdb
-C:\Users\daadv\Framework\obj\Debug\netstandard2.0\Framework.dll
-C:\Users\daadv\Framework\obj\Debug\netstandard2.0\Framework.pdb
