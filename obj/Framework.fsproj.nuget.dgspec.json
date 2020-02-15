@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\daadv\\Framework\\Framework.fsproj": {}
+    "c:\\Users\\daadv\\Framework\\Framework.fsproj": {}
   },
   "projects": {
-    "C:\\Users\\daadv\\Framework\\Framework.fsproj": {
+    "c:\\Users\\daadv\\Framework\\Framework.fsproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\daadv\\Framework\\Framework.fsproj",
+        "projectUniqueName": "c:\\Users\\daadv\\Framework\\Framework.fsproj",
         "projectName": "Framework",
-        "projectPath": "C:\\Users\\daadv\\Framework\\Framework.fsproj",
+        "projectPath": "c:\\Users\\daadv\\Framework\\Framework.fsproj",
         "packagesPath": "C:\\Users\\daadv\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\daadv\\Framework\\obj\\",
+        "outputPath": "c:\\Users\\daadv\\Framework\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\daadv\\AppData\\Roaming\\NuGet\\NuGet.Config",

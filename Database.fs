@@ -6,8 +6,8 @@ module Database =
     open Microsoft.Data.SqlClient
 
     let slqConBuilder () =
-        let builder = SqlConnectionStringBuilder()       
-
+        let builder = SqlConnectionStringBuilder()
+        //connection parameters
         new SqlConnection(builder.ConnectionString)
 
     let mapRows (reader:IDataReader) =
