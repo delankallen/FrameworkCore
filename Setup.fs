@@ -18,8 +18,12 @@ module Setup =
         configuration.optimizeBySkippingIFrameCheck <- true
 
         let browser = start config.browserType
+
+        try
+            pin config.size browser
+            url config.home browser
+            waitForElement (css "body") browser
+        with
+        | :? OpenQA.Selenium.WebDriverException -> browser.Quit()        
         
-        pin config.size browser
-        url config.home browser        
-        waitForElement (css "body") browser
         browser
