@@ -3,7 +3,6 @@ namespace Framework
 module Sync =
     open canopy.parallell.functions
     open canopy
-    open FSharpPlus
     open OpenQA.Selenium
     
     let private wrapEle action ele =
