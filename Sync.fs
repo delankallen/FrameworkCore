@@ -6,11 +6,18 @@ module Sync =
     open FSharpPlus
     open OpenQA.Selenium
     
-    let wrapEle action ele =
+    let private wrapEle action ele =
             match ele |> Option.map action with
             | Some _ -> ele
-            | None -> None
+            | None -> None    
     
+    let private isStale (xEle:IWebElement) =
+        try
+            not(xEle.Displayed)
+        with
+        | :? StaleElementReferenceException -> true
+        | :? WebDriverException -> false
+
     let someClick browser xEle =
         try
             match box xEle with
@@ -60,7 +67,7 @@ module Sync =
     let rec clickWhileDisplayed browser ele =
         match ele |> someClick browser with
         | Some _ ->
-            sleep 1
+            sleep 2
             ele |> clickWhileDisplayed browser
         | None -> ()
         
@@ -125,3 +132,83 @@ module Sync =
                         beginningState()
 
         beginningState ()
+
+    let loginFun browser loginButton =
+        let mutable i = 0
+        someClick browser loginButton
+        |> (fun x -> 
+            while not(isStale x.Value) do
+                i <- i + 1
+                sleep 3
+        )
+
+    type ExpectedResult = 
+        | NewPage
+        | NewBlockingElement
+        | NewElement
+    
+    type ElementState =
+        | ElementStale
+        | ElementBlocked
+        | ElementNotInteractable
+        | ElementNotVisable
+        | ElementNotFound
+        | ElementGood
+
+    type NewElement = {
+        WebElement: IWebElement;
+        State: ElementState;
+    }
+
+    let someElement browser ele = 
+        match box ele with
+        | :? IWebElement as element -> Some element
+        | :? string as selector -> someElement selector browser
+        | _ -> raise (types.CanopyNotStringOrElementException(sprintf "Can't click %O because it is not a string or WebElement" ele))
+
+    let private _action (browser : IWebDriver) (action : IWebElement -> IWebDriver -> unit) xEle =
+        try
+            action xEle browser
+            ElementGood
+        with
+        | :? ElementClickInterceptedException -> ElementBlocked
+        | :? StaleElementReferenceException -> ElementStale
+        | :? ElementNotInteractableException -> ElementNotInteractable
+
+    let rec searchForElement browser ele = 
+        match someElement browser ele with
+        | Some element -> element
+        | None -> 
+            sleep 1
+            searchForElement browser ele
+
+    let waitForElement2 browser ele =
+        let timer = System.Diagnostics.Stopwatch();
+        timer.Start();
+
+        let rec _search browser ele =
+            if timer.Elapsed.Seconds > (configuration.pageTimeout |> int) then 
+                types.CanopyException "Failed to find result of click element" |> raise
+            match someElement browser ele with
+            | Some element -> element
+            | None -> 
+                sleep 1
+                _search browser ele
+        _search browser ele
+
+    let newPageAction (browser : IWebDriver) (action : IWebElement -> IWebDriver -> unit) xEle yEle =
+        let timer = System.Diagnostics.Stopwatch();
+        timer.Start();
+        let rec _things (browser : IWebDriver) (action : IWebElement -> IWebDriver -> unit) xEle yEle =
+            if timer.Elapsed.Seconds > (configuration.pageTimeout |> int) then 
+                types.CanopyException "Failed to find result of click element" |> raise
+                
+            match _action browser action xEle with
+            | ElementGood -> 
+                    try
+                        waitForElement yEle browser
+                        element yEle browser
+                    with
+                    | :? WebDriverTimeoutException -> _things browser action xEle yEle
+            | _ -> searchForElement browser yEle
+        _things browser action xEle yEle

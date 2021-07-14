@@ -1,4 +1,5 @@
 namespace Framework
+
 module CanopyExtensions =
     open canopy.parallell.functions
     open OpenQA.Selenium
@@ -9,7 +10,12 @@ module CanopyExtensions =
         match box selector with
         | :? IWebElement as element -> element.SendKeys(text)
         | :? string as cssSelector -> (element cssSelector browser).SendKeys(text)
-        | _ -> raise (types.CanopyNotStringOrElementException(sprintf "Can't sendkeys to %O because it is not a string or webElement" selector))
+        | _ ->
+            raise (
+                types.CanopyNotStringOrElementException(
+                    sprintf "Can't sendkeys to %O because it is not a string or webElement" selector
+                )
+            )
 
     let private _href value = sprintf "[href = '%s']" value
     let href cssSelector = _href cssSelector |> css
@@ -19,14 +25,20 @@ module CanopyExtensions =
 
     let exists browser selector =
         match someElement selector browser with
-        | Some(_) -> true
+        | Some (_) -> true
         | None -> false
 
     let jsClick browser locator =
         try
-            locator |> xPathForJs |> sprintf "%s.click()" |> js <| browser |> Some
-        with
-        | _ -> None
+            js (locator |> xPathForJs |> sprintf "%s.click()") browser
+            |> Some
+        with _ -> None
+
+    let jsAddClass browser locator (classAttr: string) =
+        try
+            js $"{locator |> xPathForJs}.addClass({classAttr})" browser
+            |> Some
+        with _ -> None
 
     let jsClickWhile browser ele =
         let mutable i = 0
@@ -42,3 +54,9 @@ module CanopyExtensions =
             | None -> ()
 
         clickWhile()
+
+    let switchToFrame (browser: IWebDriver) (frameIdOrName:string) =
+        browser.SwitchTo().Frame(frameIdOrName) |> ignore
+    
+    let switchToParentFrame (browser: IWebDriver) =
+        browser.SwitchTo().ParentFrame() |> ignore
