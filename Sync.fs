@@ -64,6 +64,12 @@ module Sync =
         | :? StaleElementReferenceException -> None
 
     let rec clickWhileDisplayed browser ele =
+        let timer = System.Diagnostics.Stopwatch();
+        timer.Start();
+
+        if timer.Elapsed.Seconds > (configuration.pageTimeout |> int) then 
+            types.CanopyException "Element still displayed after timeout" |> raise
+
         match ele |> someClick browser with
         | Some _ ->
             sleep 2
