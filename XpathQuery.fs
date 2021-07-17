@@ -10,6 +10,7 @@ module XpathQuery =
         | InnerNode of string
         | DataHashLocation of string
         | NodeIndex of int //Xpath index starts at 1
+        | NotContain of AttributeType
 
     let select node =
         node |> sprintf "//%s"
@@ -20,7 +21,7 @@ module XpathQuery =
     let from parent node =
         sprintf "%s%s" parent node
 
-    let private contains attType =
+    let rec private contains attType =
         match attType with
         | Id a -> sprintf "@id='%s'" a
         | Class a  -> sprintf "contains(concat(' ', normalize-space(@class), ' '), ' %s ')" a
@@ -30,11 +31,12 @@ module XpathQuery =
         | InnerNode node -> sprintf ".%s" node
         | DataHashLocation a -> sprintf "contains(concat(' ', normalize-space(@data-hash-location), ' '), ' %s ')" a
         | NodeIndex a -> sprintf "%i" a
+        | NotContain a -> $"not({contains a})"
 
     let where attType node =
         sprintf "%s[%s]" node (contains attType)
 
-    let andOp selector1 selector2 node =
+    let whereAnd selector1 selector2 node =
         $"{node}[{contains selector1} and {contains selector2}]"
 
     let xPathForJs query = 
