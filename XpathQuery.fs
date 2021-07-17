@@ -13,6 +13,9 @@ module XpathQuery =
 
     let select node =
         node |> sprintf "//%s"
+
+    let selectChild node =
+        node |> sprintf "/%s"
     
     let from parent node =
         sprintf "%s%s" parent node

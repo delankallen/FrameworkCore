@@ -2,7 +2,7 @@ namespace Framework
 
 module Rest =
     open HttpFs.Client
-    open Hopac.Hopac    
+    open Hopac.Hopac
 
     type RestQuery = { qName: string; qValue: string }
 
@@ -17,13 +17,26 @@ module Rest =
             use! response = getResponse request
             printfn "response code: %d" response.statusCode
             let! bodyStr = Response.readBodyAsString response
-            return bodyStr
+            return (response.statusCode, bodyStr)
+           }
+
+    let createJob (request: Request) =
+        job {
+            try
+                use! response = getResponse request
+                printfn "response code: %d" response.statusCode
+            with
+            | _ -> ()
         }
 
-    let createJob (request: Request) = job {
-        try        
-            use! response = getResponse request
-            printfn "response code: %d" response.statusCode
-        with
-        | _ -> ()
-    }
+    let urlHeader (urlExt:string) = Request.createUrl Get $"{urlExt}"
+
+    let contentHeader app conType (r: Request) =
+        r
+        |> Request.setHeader (ContentType(ContentType.create (app, conType)))
+
+    let getRequest (queries: List<RestQuery>) =
+        urlHeader
+        >> queryHeader queries
+        >> contentHeader "application" "json"
+        >> sendRequestAsync
