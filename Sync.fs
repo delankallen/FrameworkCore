@@ -9,6 +9,18 @@ open canopy.types
 module Sync =
     let mutable browserLocal: IWebDriver = null
 
+    type DriverState =
+    | Ready
+    | TryAgain
+    | ActionRecieved
+    | Search
+    | Finished
+
+    type DriverEvent<'a> =
+        | Action of ('a -> DriverState) * 'a
+        | FindNewElement of 'a
+        | ElementNotExist of 'a
+
     let (|Element|NotValidSelector|ElementNotFound|) selector =
         try
             match box selector with
@@ -17,18 +29,6 @@ module Sync =
             | _ -> NotValidSelector
         with
         | :? CanopyElementNotFoundException -> ElementNotFound
-
-    type DriverState =
-        | Ready
-        | TryAgain
-        | ActionRecieved
-        | Search
-        | Finished
-
-    type DriverEvent<'a> =
-        | Action of ('a -> DriverState) * 'a
-        | FindNewElement of 'a
-        | ElementNotExist of 'a
 
     let action f ele =
         match ele with
@@ -92,7 +92,7 @@ module Sync =
                     | TryAgain -> _looper curState (x :: y)
                     | _ -> _looper curState y
 
-        _looper
+        _looper state events
 
     let syncClick browser xEle yEle =
         browserLocal <- browser
@@ -107,4 +107,5 @@ module Sync =
 
         [ Action(action rightClick, xEle)
           FindNewElement yEle ]
+        |> folder Ready
         |> ignore
