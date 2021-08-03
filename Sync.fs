@@ -1,219 +1,110 @@
 namespace Framework
 
+open canopy
+open canopy.configuration
+open canopy.parallell.functions
+open OpenQA.Selenium
+open canopy.types
+
 module Sync =
-    open canopy.parallell.functions
-    open canopy
-    open OpenQA.Selenium
-    
-    let private wrapEle action ele =
-            match ele |> Option.map action with
-            | Some _ -> ele
-            | None -> None    
-    
-    let private isStale (xEle:IWebElement) =
+    let mutable browserLocal: IWebDriver = null
+
+    let (|Element|NotValidSelector|ElementNotFound|) selector =
         try
-            not(xEle.Displayed)
+            match box selector with
+            | :? IWebElement as ele -> Element ele
+            | :? string as sel -> Element(element sel browserLocal)
+            | _ -> NotValidSelector
         with
-        | :? StaleElementReferenceException -> true
-        | :? WebDriverException -> false
+        | :? CanopyElementNotFoundException -> ElementNotFound
 
-    let someClick browser xEle =
-        try
-            match box xEle with
-            | :? IWebElement as element ->
-                    click element browser
-                    Some element
-            | :? string as selector ->
-                    someElement selector browser
-                    |> Option.map (fun x ->
-                        click x browser
-                        x)
-            | _ -> raise (types.CanopyNotStringOrElementException(sprintf "Can't click %O because it is not a string or webelement" xEle))
-        with
-        | :? ElementClickInterceptedException -> None
-        | :? StaleElementReferenceException -> None
-        | :? ElementNotInteractableException -> None
+    type DriverState =
+        | Ready
+        | TryAgain
+        | ActionRecieved
+        | Search
+        | Finished
 
-    let someRightClick browser xEle =
-        try
-            match box xEle with
-            | :? IWebElement as element ->
-                    rightClick element browser
-                    Some element
-            | :? string as selector ->
-                    someElement selector browser
-                    |> Option.map (fun x ->
-                        rightClick x browser
-                        x)
-            | _ -> raise (types.CanopyNotStringOrElementException(sprintf "Can't click %O because it is not a string or webelement" xEle))
-        with
-        | :? ElementClickInterceptedException -> None
-        | :? StaleElementReferenceException -> None
-        | :? ElementNotInteractableException -> None
+    type DriverEvent<'a> =
+        | Action of ('a -> DriverState) * 'a
+        | FindNewElement of 'a
+        | ElementNotExist of 'a
 
-    let isDisplayed item browser =         
-        try
-            match box item with
-            | :? IWebElement as element -> Some element.Displayed
-            | :? string as selector ->
-                match someElement selector browser with
-                | Some a -> Some a.Displayed
-                | None -> None
-            | _ -> raise (types.CanopyNotStringOrElementException(sprintf "Can't click %O because it is not a string or webelement" item))
-        with
-        | :? StaleElementReferenceException -> None
+    let action f ele =
+        match ele with
+        | Element x ->
+            f x browserLocal
+            ActionRecieved
+        | NotValidSelector -> raise (CanopyNotStringOrElementException "not a valid selector")
+        | ElementNotFound -> TryAgain
 
-    let rec clickWhileDisplayed browser ele =
-        let timer = System.Diagnostics.Stopwatch();
-        timer.Start();
+    let searchForElement ele =
+        match ele with
+        | Element _ -> Finished
+        | NotValidSelector -> raise (CanopyNotStringOrElementException "not a valid selector")
+        | ElementNotFound -> Search
 
-        if timer.Elapsed.Seconds > (configuration.pageTimeout |> int) then 
-            types.CanopyException "Element still displayed after timeout" |> raise
+    let (|Exists|NotExists|) ele =
+        match ele with
+        | Element _ -> Exists ele
+        | NotValidSelector -> raise (CanopyNotStringOrElementException "not a valid selector")
+        | ElementNotFound -> NotExists ele
 
-        match ele |> someClick browser with
-        | Some _ ->
-            sleep 2
-            ele |> clickWhileDisplayed browser
-        | None -> ()
-        
+    let fsm state event =
+        let pair = (state, event)
+
+        match pair with
+        | (Ready, Action (f, x))
+        | (TryAgain, Action (f, x))
+        | (ActionRecieved, Action (f, x)) -> f x
+
+        | (Ready, FindNewElement y)
+        | (ActionRecieved, FindNewElement y)
+        | (Search, FindNewElement y) ->
+            match y with
+            | Exists _ -> Finished
+            | NotExists _ -> Search
+
+        | (ActionRecieved, ElementNotExist x)
+        | (Search, ElementNotExist x) ->
+            match x with
+            | Exists y -> Search
+            | NotExists _ -> Finished
+
+        | _ -> state
+
+    let folder state events =
+        let timer = System.Diagnostics.Stopwatch()
+        timer.Start()
+
+        let rec _looper state events =
+            if timer.Elapsed.Seconds > (pageTimeout |> int) then
+                CanopyException "Failed to find result of click element"
+                |> raise
+
+            match events with
+            | [] -> state
+            | (x :: y) ->
+                fsm state x
+                |> fun curState ->
+                    match curState with
+                    | Search
+                    | TryAgain -> _looper curState (x :: y)
+                    | _ -> _looper curState y
+
+        _looper
+
     let syncClick browser xEle yEle =
-        let mutable i = 0
-        let mutable clicked = false
-        let rec searchState () =
-            match someElement yEle browser with
-            | Some a -> a
-            | None ->
-                i <- i + 1
-                match i with
-                | x when x >= (configuration.pageTimeout |> int) -> types.CanopyException "Failed to find result of click element" |> raise
-                | _ ->
-                    sleep 1
-                    searchState ()
-                    
-        let rec beginningState () =
-            match someElement yEle browser with
-            | Some a -> a
-            | None ->
-                match someClick browser xEle with
-                | Some _ ->
-                    sleep 2
-                    clicked <- true
-                    beginningState ()
-                | None _ -> 
-                    if clicked then
-                        searchState()
-                    else
-                        beginningState()
+        browserLocal <- browser
 
-        beginningState ()
+        [ Action(action click, xEle)
+          FindNewElement yEle ]
+        |> folder Ready
+        |> ignore
 
     let syncRightClick browser xEle yEle =
-        let mutable i = 0
-        let mutable clicked = false
-        let rec searchState () =
-            match someElement yEle browser with
-            | Some a -> a
-            | None ->
-                i <- i + 1
-                match i with
-                | x when x >= (configuration.pageTimeout |> int) -> types.CanopyException "Failed to find result of click element" |> raise
-                | _ ->
-                    sleep 1
-                    searchState ()
-                    
-        let rec beginningState () =
-            match someElement yEle browser with
-            | Some a -> a
-            | None ->
-                match someRightClick browser xEle with
-                | Some _ ->
-                    sleep 2
-                    clicked <- true
-                    beginningState ()
-                | None _ -> 
-                    if clicked then
-                        searchState()
-                    else
-                        beginningState()
+        browserLocal <- browser
 
-        beginningState ()
-
-    let loginFun browser loginButton =
-        let mutable i = 0
-        someClick browser loginButton
-        |> (fun x -> 
-            while not(isStale x.Value) do
-                i <- i + 1
-                sleep 3
-        )
-
-    type ExpectedResult = 
-        | NewPage
-        | NewBlockingElement
-        | NewElement
-    
-    type ElementState =
-        | ElementStale
-        | ElementBlocked
-        | ElementNotInteractable
-        | ElementNotVisable
-        | ElementNotFound
-        | ElementGood
-
-    type NewElement = {
-        WebElement: IWebElement;
-        State: ElementState;
-    }
-
-    let someElement browser ele = 
-        match box ele with
-        | :? IWebElement as element -> Some element
-        | :? string as selector -> someElement selector browser
-        | _ -> raise (types.CanopyNotStringOrElementException(sprintf "Can't click %O because it is not a string or WebElement" ele))
-
-    let private _action (browser : IWebDriver) (action : IWebElement -> IWebDriver -> unit) xEle =
-        try
-            action xEle browser
-            ElementGood
-        with
-        | :? ElementClickInterceptedException -> ElementBlocked
-        | :? StaleElementReferenceException -> ElementStale
-        | :? ElementNotInteractableException -> ElementNotInteractable
-
-    let rec searchForElement browser ele = 
-        match someElement browser ele with
-        | Some element -> element
-        | None -> 
-            sleep 1
-            searchForElement browser ele
-
-    let waitForElement2 browser ele =
-        let timer = System.Diagnostics.Stopwatch();
-        timer.Start();
-
-        let rec _search browser ele =
-            if timer.Elapsed.Seconds > (configuration.pageTimeout |> int) then 
-                types.CanopyException "Failed to find result of click element" |> raise
-            match someElement browser ele with
-            | Some element -> element
-            | None -> 
-                sleep 1
-                _search browser ele
-        _search browser ele
-
-    let newPageAction (browser : IWebDriver) (action : IWebElement -> IWebDriver -> unit) xEle yEle =
-        let timer = System.Diagnostics.Stopwatch();
-        timer.Start();
-        let rec _things (browser : IWebDriver) (action : IWebElement -> IWebDriver -> unit) xEle yEle =
-            if timer.Elapsed.Seconds > (configuration.pageTimeout |> int) then 
-                types.CanopyException "Failed to find result of click element" |> raise
-                
-            match _action browser action xEle with
-            | ElementGood -> 
-                    try
-                        waitForElement yEle browser
-                        element yEle browser
-                    with
-                    | :? WebDriverTimeoutException -> _things browser action xEle yEle
-            | _ -> searchForElement browser yEle
-        _things browser action xEle yEle
+        [ Action(action rightClick, xEle)
+          FindNewElement yEle ]
+        |> ignore
