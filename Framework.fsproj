@@ -15,7 +15,7 @@
     <PackageReference Include="dapper" Version="2.0.90" />
     <PackageReference Include="FSharp.Json" Version="0.4.0" />
     <PackageReference Include="Http.fs" Version="5.4.0" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="3.0.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="3.1.5" />
     <PackageReference Include="Selenium.Support" Version="3.141.0" />
   </ItemGroup>
 </Project>
